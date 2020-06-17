@@ -25,6 +25,21 @@ const name = defaultSettings.title || 'Vue Template' // page title
 // port = 9528 npm run dev OR npm run dev --port = 9528
 const port = process.env.port || process.env.npm_config_port || 9332 // dev port
 
+const staticResources = {
+  images: {
+    prefix: 'png|jpe?g|gif|webp',
+    path: 'img'
+  },
+  media: {
+    prefix: 'mp4|webm|ogg|mp3|wav|flac|aac',
+    path: 'media'
+  },
+  fonts: {
+    prefix: 'woff2?|eot|ttf|otf',
+    path: 'fonts'
+  }
+}
+
 // All configuration item explanations can be find in https://cli.vuejs.org/config/
 module.exports = {
   /**
@@ -51,14 +66,48 @@ module.exports = {
     }
   },
   chainWebpack(config) {
+    config.output
+      .filename('[name]/js/[name].[contenthash:8].js')
+      .chunkFilename('[name]/js/[name].[contenthash:8].js')
+
     Object.keys(entries).forEach(page => {
       config.plugins.delete(`preload-${page}`)
       config.plugins.delete(`prefetch-${page}`)
     })
+
     config.externals({
       vue: 'Vue'
     })
 
+    /* 设置静态资源的路径 */
+    Object.keys(staticResources)
+      .forEach(
+        resource =>
+          config.module
+            .rule(resource)
+            .use('url-loader')
+            .tap(options => {
+              options.fallback.options.name = (path) => {
+                const reg = new RegExp(`\\/(views|assets)\\/([a-z0-9\\/]+)(\\/[a-z0-9]+\\.(${staticResources[resource].prefix})(\\?.*)?$)`, 'ig')
+                const matchedArr = reg.exec(path)
+                return matchedArr ? `${matchedArr[2]}/[name].[contenthash:8].[ext]` : `static/${staticResources[resource].path}/[name].[contenthash:8].[ext]`
+              }
+              return options
+            })
+            .end()
+      )
+    config.module
+      .rule('svg')
+      .use('file-loader')
+      .tap(options => {
+        options.name = (path) => {
+          const reg = new RegExp(`\\/(views|assets)\\/([a-z0-9\\/]+)(\\/[a-z0-9]+\\.(svg)(\\?.*)?$)`, 'ig')
+          const matchedArr = reg.exec(path)
+          return matchedArr ? `${matchedArr[2]}/[name].[contenthash:8].[ext]` : `static/svg/[name].[contenthash:8].[ext]`
+        }
+        return options
+      })
+      .end()
     // set svg-sprite-loader
     config.module
       .rule('svg')
@@ -120,10 +169,19 @@ module.exports = {
         usePublicPath: false,
         append: false
       }])
-
+      .end()
+    config
+      .plugin('extract-css')
+      .tap(_ => {
+        return [{
+          filename: '[name]/css/[name].[contenthash:8].css',
+          chunkFilename: '[name]/css/[name].[contenthash:8].css'
+        }]
+      })
+      .end()
     config
       .plugin('friendly-errors')
-      .tap(args => {
+      .tap(_ => {
         const devUrl = `http://localhost:${config.devServer.store.get('port')}`
         return [{
           compilationSuccessInfo: {
@@ -139,6 +197,7 @@ module.exports = {
           }
         }]
       })
+      .end()
     config
       .when(process.env.NODE_ENV !== 'development',
         config => {

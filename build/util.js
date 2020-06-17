@@ -10,7 +10,8 @@ exports.formatEntries = (entries) => {
     formattedEntries[entry] = {
       entry: path,
       template: 'public/index.html',
-      chunks: ['chunk-libs', 'chunk-elementUI', 'chunk-commons', entry, 'runtime']
+      chunks: ['chunk-libs', 'chunk-elementUI', 'chunk-commons', entry, 'runtime'],
+      filename: `${entry}/index.html`
     }
   }
   return formattedEntries
