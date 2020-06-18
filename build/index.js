@@ -17,8 +17,8 @@ if (process.env.npm_config_update || rawArgv.includes('--update')) {
   if (updateFiles.length === 0) {
     run(`vue-cli-service build ${args}`)
   } else {
-    const updateArgs = updateFiles.map(item => item.replace('src/views/', '').split('/')[0].join(','))
-    run(`vue-cli-service build ${args} --path=${updateArgs}`)
+    const updateArgs = updateFiles.map(item => item.replace('src/views/', '').split('/')[0])
+    run(`npm run build ${args} --path=${updateArgs.join(',')}`)
   }
   return
 }

@@ -221,10 +221,10 @@ module.exports = {
             .use(CleanWebpackPlugin, [{
               cleanOnceBeforeBuildPatterns:
                 process.env.npm_config_path
-                  ? [config.output.store.get('path')]
-                  : (process.env.npm_config_path ? process.env.npm_config_path.split(',') : []).map(
-                    item => `${config.output.store.get('path')}/${item}/*`
-                  )
+                  ? process.env.npm_config_path
+                    .split(',')
+                    .map(item => `${config.output.store.get('path')}/${item}/*`)
+                  : [config.output.store.get('path')]
             }])
             .end()
 
