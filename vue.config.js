@@ -3,6 +3,7 @@ const path = require('path')
 const utils = require('./build/util')
 const defaultSettings = require('./src/settings.js')
 const fs = require('fs')
+const { CleanWebpackPlugin } = require('clean-webpack-plugin')
 
 let entries = utils.getEntries(
   path.join(__dirname, './src/views/**/main.*')
@@ -165,25 +166,6 @@ module.exports = {
             .filename('[name]/js/[name].[contenthash:8].js')
             .chunkFilename('[name]/js/[name].[contenthash:8].js')
 
-          config
-            .plugin('ScriptExtHtmlWebpackPlugin')
-            .after('html')
-            .use('script-ext-html-webpack-plugin', [{
-            // `runtime` must same as runtimeChunk name. default is `runtime`
-              inline: /runtime\..*\.js$/
-            }])
-            .end()
-
-          config
-            .plugin('extract-css')
-            .tap(_ => {
-              return [{
-                filename: '[name]/css/[name].[contenthash:8].css',
-                chunkFilename: '[name]/css/[name].[contenthash:8].css'
-              }]
-            })
-            .end()
-
           /* 设置静态资源的路径 */
           Object.keys(staticResources)
             .forEach(
@@ -216,14 +198,33 @@ module.exports = {
             .end()
 
           config
-            .plugin('cleanWebpackPlugin')
-            .use('clean-webpack-plugin', [{
+            .plugin('ScriptExtHtmlWebpackPlugin')
+            .after('html')
+            .use('script-ext-html-webpack-plugin', [{
+            // `runtime` must same as runtimeChunk name. default is `runtime`
+              inline: /runtime\..*\.js$/
+            }])
+            .end()
+
+          config
+            .plugin('extract-css')
+            .tap(_ => {
+              return [{
+                filename: '[name]/css/[name].[contenthash:8].css',
+                chunkFilename: '[name]/css/[name].[contenthash:8].css'
+              }]
+            })
+            .end()
+
+          config
+            .plugin('CleanWebpackPlugin')
+            .use(CleanWebpackPlugin, [{
               cleanOnceBeforeBuildPatterns:
-              process.env.npm_config_path
-                ? [config.output.store.get('path')]
-                : (process.env.npm_config_path.split(',') || []).map(
-                  item => `${config.output.store.get('path')}/${item}/*`
-                )
+                process.env.npm_config_path
+                  ? [config.output.store.get('path')]
+                  : (process.env.npm_config_path ? process.env.npm_config_path.split(',') : []).map(
+                    item => `${config.output.store.get('path')}/${item}/*`
+                  )
             }])
             .end()
 
