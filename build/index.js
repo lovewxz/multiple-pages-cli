@@ -6,6 +6,20 @@ const args = rawArgv.join(' ')
 const { diff } = require('./version')
 
 if (process.env.npm_config_update || rawArgv.includes('--update')) {
+  const files = diff ? diff.split('\n') : []
+  const reg = new RegExp('src\\/views\\/', 'i')
+  const updateFiles = []
+  files.forEach(file => {
+    if (reg.test(file)) {
+      updateFiles.push(file)
+    }
+  })
+  if (updateFiles.length === 0) {
+    run(`vue-cli-service build ${args}`)
+  } else {
+    const updateArgs = updateFiles.map(item => item.replace('src/views/', '').split('/')[0].join(','))
+    run(`vue-cli-service build ${args} --path=${updateArgs}`)
+  }
   return
 }
 

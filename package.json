@@ -10,6 +10,7 @@
     "build:update": "node build/index.js --update"
   },
   "dependencies": {
+    "clean-webpack-plugin": "^3.0.0",
     "vue": "^2.6.11"
   },
   "devDependencies": {

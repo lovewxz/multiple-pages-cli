@@ -66,10 +66,6 @@ module.exports = {
     }
   },
   chainWebpack(config) {
-    config.output
-      .filename('[name]/js/[name].[contenthash:8].js')
-      .chunkFilename('[name]/js/[name].[contenthash:8].js')
-
     Object.keys(entries).forEach(page => {
       config.plugins.delete(`preload-${page}`)
       config.plugins.delete(`prefetch-${page}`)
@@ -79,35 +75,6 @@ module.exports = {
       vue: 'Vue'
     })
 
-    /* 设置静态资源的路径 */
-    Object.keys(staticResources)
-      .forEach(
-        resource =>
-          config.module
-            .rule(resource)
-            .use('url-loader')
-            .tap(options => {
-              options.fallback.options.name = (path) => {
-                const reg = new RegExp(`\\/(views|assets)\\/([a-z0-9\\/]+)(\\/[a-z0-9]+\\.(${staticResources[resource].prefix})(\\?.*)?$)`, 'ig')
-                const matchedArr = reg.exec(path)
-                return matchedArr ? `${matchedArr[2]}/[name].[contenthash:8].[ext]` : `static/${staticResources[resource].path}/[name].[contenthash:8].[ext]`
-              }
-              return options
-            })
-            .end()
-      )
-    config.module
-      .rule('svg')
-      .use('file-loader')
-      .tap(options => {
-        options.name = (path) => {
-          const reg = new RegExp(`\\/(views|assets)\\/([a-z0-9\\/]+)(\\/[a-z0-9]+\\.(svg)(\\?.*)?$)`, 'ig')
-          const matchedArr = reg.exec(path)
-          return matchedArr ? `${matchedArr[2]}/[name].[contenthash:8].[ext]` : `static/svg/[name].[contenthash:8].[ext]`
-        }
-        return options
-      })
-      .end()
     // set svg-sprite-loader
     config.module
       .rule('svg')
@@ -159,6 +126,26 @@ module.exports = {
             })
             config.devServer.proxy(proxy)
           }
+
+          config
+            .plugin('friendly-errors')
+            .tap(_ => {
+              const devUrl = `http://localhost:${config.devServer.store.get('port')}`
+              return [{
+                compilationSuccessInfo: {
+                  messages: [
+                    '> 构建完成，请手工复制下面的链接，复制到浏览器里打开。\n',
+                    ...Object.keys(entries).map(
+                      chunk =>
+                        `> Listening at ${devUrl}/${chunk
+                          .split(path.sep)
+                          .join('/')}.html`
+                    )
+                  ]
+                }
+              }]
+            })
+            .end()
         }
       )
     config
@@ -170,37 +157,14 @@ module.exports = {
         append: false
       }])
       .end()
-    config
-      .plugin('extract-css')
-      .tap(_ => {
-        return [{
-          filename: '[name]/css/[name].[contenthash:8].css',
-          chunkFilename: '[name]/css/[name].[contenthash:8].css'
-        }]
-      })
-      .end()
-    config
-      .plugin('friendly-errors')
-      .tap(_ => {
-        const devUrl = `http://localhost:${config.devServer.store.get('port')}`
-        return [{
-          compilationSuccessInfo: {
-            messages: [
-              '> 构建完成，请手工复制下面的链接，复制到浏览器里打开。\n',
-              ...Object.keys(entries).map(
-                chunk =>
-                  `> Listening at ${devUrl}/${chunk
-                    .split(path.sep)
-                    .join('/')}.html`
-              )
-            ]
-          }
-        }]
-      })
-      .end()
+
     config
       .when(process.env.NODE_ENV !== 'development',
         config => {
+          config.output
+            .filename('[name]/js/[name].[contenthash:8].js')
+            .chunkFilename('[name]/js/[name].[contenthash:8].js')
+
           config
             .plugin('ScriptExtHtmlWebpackPlugin')
             .after('html')
@@ -209,6 +173,60 @@ module.exports = {
               inline: /runtime\..*\.js$/
             }])
             .end()
+
+          config
+            .plugin('extract-css')
+            .tap(_ => {
+              return [{
+                filename: '[name]/css/[name].[contenthash:8].css',
+                chunkFilename: '[name]/css/[name].[contenthash:8].css'
+              }]
+            })
+            .end()
+
+          /* 设置静态资源的路径 */
+          Object.keys(staticResources)
+            .forEach(
+              resource =>
+                config.module
+                  .rule(resource)
+                  .use('url-loader')
+                  .tap(options => {
+                    options.fallback.options.name = (path) => {
+                      const reg = new RegExp(`\\/(views|assets)\\/([a-z0-9\\/]+)(\\/[a-z0-9]+\\.(${staticResources[resource].prefix})(\\?.*)?$)`, 'ig')
+                      const matchedArr = reg.exec(path)
+                      return matchedArr ? `${matchedArr[2]}/[name].[contenthash:8].[ext]` : `static/${staticResources[resource].path}/[name].[contenthash:8].[ext]`
+                    }
+                    return options
+                  })
+                  .end()
+            )
+
+          config.module
+            .rule('svg')
+            .use('file-loader')
+            .tap(options => {
+              options.name = (path) => {
+                const reg = new RegExp(`\\/(views|assets)\\/([a-z0-9\\/]+)(\\/[a-z0-9]+\\.(svg)(\\?.*)?$)`, 'ig')
+                const matchedArr = reg.exec(path)
+                return matchedArr ? `${matchedArr[2]}/[name].[contenthash:8].[ext]` : `static/svg/[name].[contenthash:8].[ext]`
+              }
+              return options
+            })
+            .end()
+
+          config
+            .plugin('cleanWebpackPlugin')
+            .use('clean-webpack-plugin', [{
+              cleanOnceBeforeBuildPatterns:
+              process.env.npm_config_path
+                ? [config.output.store.get('path')]
+                : (process.env.npm_config_path.split(',') || []).map(
+                  item => `${config.output.store.get('path')}/${item}/*`
+                )
+            }])
+            .end()
+
           config
             .optimization.splitChunks({
               chunks: 'all',
@@ -233,6 +251,7 @@ module.exports = {
                 }
               }
             })
+
           config.optimization.runtimeChunk('single')
         }
       )
